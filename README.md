@@ -36,6 +36,7 @@ Python 3.8以上がPCにインストールされている必要があります�
 OBS Studioがインストールされ、OBS-WebSocketプラグインが有効になっている必要があります。OBS-WebSocketのバージョンは5.0以上を推奨します。最近のOBS（31.1.2時点）は、標準でOBS-WebSocketプラグインがインストール＆有効になっているようです。
 
 ③ 各種ライブラリのインストール
+
 コマンドプロンプトで以下のコマンドをコピー＆ペーストし、ライブラリをインストールします。
 - pip install customtkinter
 - pip install obs-websocket-py
