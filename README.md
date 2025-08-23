@@ -40,6 +40,7 @@ OBS Studioがインストールされ、OBS-WebSocketプラグインが有効に
 - pip install obs-websocket-py
 - pip install pyaudio
 - pip install numpy
+
 （補足：customtkinterはUIウィンドウの表示、obs-websocket-pyはOBSとの通信、pyaudioとnumpyはマイクからの音声データ処理にそれぞれ使われます。）
 
 ## ◆使い方（入門）◆
