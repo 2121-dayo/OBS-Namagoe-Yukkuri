@@ -70,6 +70,7 @@ class AsyncOBS:
         try:
             response = self.ws.call(requests.GetSceneItemList(sceneName=scene_name))
             if response.status:
+                # 修正部分: sourceKindとisGroupの両方を確認する
                 group_names = [item['sourceName'] for item in response.datain['sceneItems'] if item.get('sourceKind') == 'group' or item.get('isGroup') == True]
                 return group_names
             else:
@@ -268,8 +269,9 @@ class App(ctk.CTk):
         self.obs_client = None
         self.is_obs_preset_valid = False
         self.is_app_preset_valid = False
-        self.is_searching = False
+        self.is_searching = False # 検索中フラグを追加
         
+        # 修正部分: 検索結果をキャッシュする辞書を追加
         self.cache_image_ids = {}
 
         self.create_widgets()
@@ -279,6 +281,7 @@ class App(ctk.CTk):
         self.update_volume_monitor()
         
         self.auto_load_settings = self.load_auto_load_settings()
+        # auto_load_checkboxをauto_search_checkboxに名称変更
         self.auto_search_checkbox.select() if self.auto_load_settings.get("auto_load", False) else self.auto_search_checkbox.deselect()
 
     def create_widgets(self):
@@ -296,11 +299,12 @@ class App(ctk.CTk):
         if self.current_theme_name == "Light":
             self.appearance_mode_switch.select()
 
+        # 追加する「取扱説明書」ボタン
         help_button = ctk.CTkButton(
             appearance_control_frame,
             text="取扱説明書",
             command=self.show_manual,
-            width=120
+            width=120  # 幅を調整して他のウィジェットと並べやすくする
         )
         help_button.pack(side="right", padx=(10, 0))
 
@@ -315,10 +319,11 @@ class App(ctk.CTk):
         self.obs_port_entry = self.add_entry_with_label(obs_group_frame, "ポート:", "4455", self.clear_obs_preset_name)
         self.obs_password_entry = self.add_entry_with_label(obs_group_frame, "パスワード:", "", self.clear_obs_preset_name)
 
+        # 接続テストボタンの名称変更と自動画像検索チェックボックスの移動
         connection_button_frame = ctk.CTkFrame(obs_group_frame, fg_color="transparent")
         connection_button_frame.pack(fill="x", pady=5)
         ctk.CTkButton(connection_button_frame, text="OBS接続", command=self.test_obs_connection).pack(side="left", padx=(10, 5), expand=True, fill="x")
-
+        # auto_load_checkboxをauto_search_checkboxに名称変更
         self.auto_search_checkbox = ctk.CTkCheckBox(connection_button_frame, text="接続時に自動画像検索", command=self.save_auto_load_settings)
         self.auto_search_checkbox.pack(side="left", padx=(5, 10))
 
@@ -378,10 +383,16 @@ class App(ctk.CTk):
         setting_frame.pack(padx=10, pady=5, fill="x")
         ctk.CTkLabel(setting_frame, text="シーン・画像・マイク設定", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(5, 5))
 
+        # auto_load_frameとauto_load_checkboxを削除
+        # auto_load_frame = ctk.CTkFrame(setting_frame, fg_color="transparent")
+        # auto_load_frame.pack(fill="x", pady=5)
+        # self.auto_load_checkbox = ctk.CTkCheckBox(auto_load_frame, text="起動時に自動読み込み", command=self.save_auto_load_settings)
+        # self.auto_load_checkbox.pack(side="left")
+
         scene_frame = ctk.CTkFrame(setting_frame, fg_color="transparent")
         scene_frame.pack(fill="x", pady=5)
         ctk.CTkLabel(scene_frame, text="シーン名:", width=100).pack(side="left", padx=(0, 5))
-
+        # 修正: シーン変更時に画像情報をリセットするメソッドを呼び出す
         self.scene_name_optionmenu = ctk.CTkOptionMenu(scene_frame, values=["-"], command=lambda value: (self.clear_group_and_image_info(value), self.clear_app_preset_status()))
         self.scene_name_optionmenu.bind("<Configure>", lambda event: self.clear_app_preset_status()) # 変更
         self.scene_name_optionmenu.pack(side="left", fill="x", expand=True)
@@ -390,19 +401,19 @@ class App(ctk.CTk):
         group_frame = ctk.CTkFrame(setting_frame, fg_color="transparent")
         group_frame.pack(fill="x", pady=5)
         ctk.CTkLabel(group_frame, text="グループ名:", width=100).pack(side="left", padx=(0, 5))
-
+        # 修正部分: グループ名変更時に_update_image_range_on_group_changeを呼び出す
         self.group_name_optionmenu = ctk.CTkOptionMenu(group_frame, values=["-"], command=lambda value: (self._update_image_range_on_group_change(value), self.clear_app_preset_status())) 
         self.group_name_optionmenu.bind("<Configure>", lambda event: self.clear_app_preset_status()) # 変更
         self.group_name_optionmenu.pack(side="left", fill="x", expand=True)
         ctk.CTkButton(group_frame, text="グループ内画像検索", width=120, command=self.start_find_sources_in_group_thread).pack(side="left", padx=(5, 0))
 
-
+        # OBS内画像ID網羅検索ボタンと再起動ボタンを横並びにするためのフレームを追加
         search_and_restart_frame = ctk.CTkFrame(setting_frame, fg_color="transparent")
         search_and_restart_frame.pack(fill="x", pady=5, padx=10)
         
-
+        # 新しい再起動ボタンを追加
         ctk.CTkButton(search_and_restart_frame, text="↻ 再起動", command=self.on_restart).pack(side="left", padx=(0, 5), fill="x", expand=True)
-
+        # 既存のボタンを新しいフレームに移動
         ctk.CTkButton(search_and_restart_frame, text="OBS内画像ID網羅検索", command=self.start_find_all_sources_thread).pack(side="left", padx=(5, 0), fill="x", expand=True)
         
         self.found_images_label = ctk.CTkLabel(setting_frame, text="見つかった画像: 0個")
@@ -427,6 +438,7 @@ class App(ctk.CTk):
         self.mic_optionmenu.bind("<Configure>", lambda event: self.clear_app_preset_status()) # 変更
         self.mic_optionmenu.pack(side="left", fill="x", expand=True)
         
+        # 音量閾値（下限）の入力欄をスライダーと数値入力のフレームに修正
         volume_min_frame = ctk.CTkFrame(setting_frame, fg_color="transparent")
         volume_min_frame.pack(fill="x", pady=5)
         
@@ -459,6 +471,7 @@ class App(ctk.CTk):
         self.threshold_min_entry.bind("<KeyRelease>", self.update_volume_labels_from_entry)
         self.threshold_min_entry.pack(side="left", padx=(5, 0))
 
+        # 音量閾値（上限）の入力欄をスライダーと数値入力のフレームに修正
         volume_max_frame = ctk.CTkFrame(setting_frame, fg_color="transparent")
         volume_max_frame.pack(fill="x", pady=5)
         
@@ -499,9 +512,12 @@ class App(ctk.CTk):
         self.threshold_min_entry.insert(0, "50")
         self.threshold_max_entry.insert(0, "500")
 
+        # 閾値を設定し再起動ボタンを音量スライダーの下に移動
+        # 修正: ボタンの状態を常に'normal'にする
         self.set_threshold_and_restart_button = ctk.CTkButton(setting_frame, text="閾値を設定し再起動", command=self.on_set_threshold_and_restart, state="normal")
         self.set_threshold_and_restart_button.pack(fill="x", pady=5, padx=10)
         
+        # --- 修正箇所: 音量モニターのUIを再構築 ---
         self.volume_monitor_frame = ctk.CTkFrame(self, corner_radius=10)
         self.volume_monitor_frame.pack(fill="x", padx=10, pady=10)
         ctk.CTkLabel(self.volume_monitor_frame, text="音量モニター", font=ctk.CTkFont(size=14, weight="bold")).pack(pady=(5, 0))
@@ -515,11 +531,14 @@ class App(ctk.CTk):
         self.volume_progress.pack(fill="x")
         self.volume_progress.set(0)
 
+        # 閾値マーカーと数値ラベルのUIを修正
         self.min_threshold_marker = ctk.CTkFrame(self.volume_progress_container, width=2, height=10, fg_color="red")
         self.max_threshold_marker = ctk.CTkFrame(self.volume_progress_container, width=2, height=10, fg_color="green")
         
+        # 閾値マーカーの数値ラベルを追加
         self.min_threshold_label = ctk.CTkLabel(self.volume_monitor_frame, text="0", text_color="red")
         self.max_threshold_label = ctk.CTkLabel(self.volume_monitor_frame, text="0", text_color="green")
+        # --- 修正箇所ここまで ---
         
         # 実行ボタンの上の適用中プリセット表示
         applied_presets_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -536,7 +555,7 @@ class App(ctk.CTk):
         self.start_button.pack(side="left", expand=True, fill="x", padx=(0, 5))
         self.stop_button = ctk.CTkButton(button_frame, text="■ 停止", command=self.on_stop, state="disabled")
         self.stop_button.pack(side="left", expand=True, fill="x", padx=(5, 5))
-
+        # 修正: ボタンの状態を常に'normal'にする
         self.restart_button = ctk.CTkButton(button_frame, text="↻ 再起動", command=self.on_restart, state="normal")
         self.restart_button.pack(side="left", expand=True, fill="x", padx=(5, 0))
 
@@ -544,7 +563,7 @@ class App(ctk.CTk):
         self.status_label.pack(fill="x", pady=(0, 5))
         
         self.update_volume_labels_from_slider()
-
+        # 修正: 閾値マーカーと数値ラベルの初期配置を調整
         self.after(100, self.update_threshold_markers)
 
     def add_entry_with_label(self, parent, label_text, default_value, command):
@@ -565,6 +584,7 @@ class App(ctk.CTk):
             return {"auto_load": False}
             
     def save_auto_load_settings(self):
+        # auto_load_checkboxをauto_search_checkboxに名称変更
         settings = {"auto_load": self.auto_search_checkbox.get()}
         with open(AUTO_LOAD_SETTINGS_FILE, "w") as f:
             json.dump(settings, f)
@@ -673,7 +693,7 @@ class App(ctk.CTk):
         self.status_label.configure(text=f"アプリ設定プリセット '{preset_name}' を適用しました。", text_color="green")
         self.is_app_preset_valid = True
         self.preset_optionmenu.set("-") # 適用後に選択欄をリセット
-        self.preset_name_entry.delete(0, ctk.END)
+        self.preset_name_entry.delete(0, ctk.END) # この行を追加
     
     def _load_app_preset_async_helper(self, data):
         """非同期でグループリストを更新した後、プリセットの値を設定するヘルパーメソッド"""
@@ -820,7 +840,7 @@ class App(ctk.CTk):
                 # シーンリストを更新
                 self.update_scene_list()
                 
-                # 自動検索のタイミングを遅延させる
+                # 修正部分: 自動検索のタイミングを遅延させる
                 if self.auto_search_checkbox.get():
                     self.after(500, self.start_find_all_sources_thread)
 
@@ -929,6 +949,7 @@ class App(ctk.CTk):
             # 入力が無効な場合は何もしない
             pass
 
+    # 修正: 閾値マーカーと数値ラベルの配置を調整
     def update_threshold_markers(self):
         min_pos = self.threshold_min_slider.get() / MAX_RMS_VALUE
         max_pos = self.threshold_max_slider.get() / MAX_RMS_VALUE
@@ -972,7 +993,8 @@ class App(ctk.CTk):
             # シーンリストを更新
             self.update_scene_list()
 
-            if self.auto_search_checkbox.get():
+            if self.auto_search_checkbox.get(): # 変更
+                # 修正部分: 自動検索のタイミングを遅延させる
                 self.after(500, self.start_find_all_sources_thread)
         else:
             self.status_label.configure(text="❌ OBSへの接続に失敗しました。", text_color="red")
@@ -1022,7 +1044,7 @@ class App(ctk.CTk):
         groups = obs_client_local.get_group_list_in_scene(selected_scene)
         obs_client_local.disconnect()
         
-        # キャッシュに画像がないグループを非表示にする
+        # 修正部分: キャッシュに画像がないグループを非表示にする
         visible_groups = []
         for group in groups:
             cache_key = (selected_scene, group)
@@ -1166,7 +1188,7 @@ class App(ctk.CTk):
                             found_ids_for_group[source_name] = source_id
                             total_found_count += 1
                     
-                    # 画像が見つからない場合もキャッシュに残す
+                    # 修正部分: 画像が見つからない場合もキャッシュに残す
                     self.cache_image_ids[(scene_name, group_name)] = found_ids_for_group
         except Exception as e:
             print(f"検索中にエラーが発生しました: {e}")
@@ -1299,12 +1321,12 @@ class App(ctk.CTk):
             self.image_range_start_optionmenu.configure(values=["-"])
             self.image_range_end_optionmenu.configure(values=["-"])
         self.update_idletasks()
-        self.clear_app_preset_status()
+        self.clear_app_preset_status() # 変更
 
     def on_start(self):
         global current_threshold_min, current_threshold_max, selected_mic_index, current_scene_name, current_group_name
         
-        # 選択されたシーンとグループのキャッシュから画像IDを再ロードする
+        # 修正部分: 選択されたシーンとグループのキャッシュから画像IDを再ロードする
         selected_scene = self.scene_name_optionmenu.get()
         selected_group = self.group_name_optionmenu.get()
         cache_key = (selected_scene, selected_group)
@@ -1347,6 +1369,7 @@ class App(ctk.CTk):
             
         self.start_button.configure(state="disabled")
         self.stop_button.configure(state="normal")
+        # 修正: 再起動ボタンの状態変更を削除
         self.status_label.configure(text="▶ 音量監視中...", text_color="blue")
         start_audio_thread(self)
 
@@ -1356,6 +1379,7 @@ class App(ctk.CTk):
         stop_audio_thread()
         self.start_button.configure(state="normal")
         self.stop_button.configure(state="disabled")
+        # 修正: 再起動ボタンの状態変更を削除
         self.status_label.configure(text="■ 停止しました", text_color="green")
         
         if obs_client:
@@ -1441,7 +1465,7 @@ class App(ctk.CTk):
         self.change_is_active = False
 
     def show_manual(self):
-        file_path = "C:\\OBS_Streaming\\OBS生声ゆっくり\\OBS生声ゆっくり_取扱説明書.txt"
+        file_path = "OBS生声ゆっくり_取扱説明書.txt"
 
         # ファイルが存在しない場合はエラーメッセージを表示して終了
         if not os.path.exists(file_path):
